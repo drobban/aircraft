@@ -68,7 +68,7 @@ defmodule Aircraft.Calculator do
     - `bearing` (float): The initial bearing in degrees, normalized to the range 0°–360°.
 
   ## Examples
-  
+
       iex> Aircraft.Calculator.calculate_bearing(51.0, 7.10, 51.0000, 7.11)
       89.99611427020855
 

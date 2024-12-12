@@ -1,5 +1,6 @@
 defmodule Aircraft do
   require Logger
+  alias Aircraft.Calculator
 
   defmodule State do
     @type name :: String.t()
@@ -40,13 +41,18 @@ defmodule Aircraft do
   end
 
   def test() do
+    dest_lat = 50.4119806
+    dest_lng = 30.443292371766972
+ 
+    {pos_lat, pos_lng} = Calculator.calculate_new_position(dest_lat, dest_lng, 180.0, 50_000)
+
     state = %Aircraft.State{
       name: "MH417",
       type: :civilian,
-      pos_lat: 51.2312313,
-      pos_long: 8.21212121,
-      destination_lat: 51.2412313,
-      destination_long: 8.21212121
+      pos_lat: pos_lat,
+      pos_long: pos_lng,
+      destination_lat: dest_lat,
+      destination_long: dest_lng
     }
 
     Logger.debug(inspect(state))
@@ -71,5 +77,7 @@ defmodule Aircraft do
     distance = Calculator.calculate_distance(current_lat, current_lng, new_lat, new_lng)
     Logger.debug(inspect(bearing))
     Logger.debug(inspect(distance))
+
+    GenServer.start_link(Aircraft.Worker, state)
   end
 end
