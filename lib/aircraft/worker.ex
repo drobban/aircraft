@@ -7,6 +7,12 @@ defmodule Aircraft.Worker do
   @tick 10_000
   @kmh_to_ms 3.6
 
+
+  def start_link(%Aircraft.State{} = state) do
+    Logger.debug(inspect(__MODULE__))
+    GenServer.start_link(__MODULE__, state, name: String.to_atom(state.name))
+  end
+
   @impl true
   def init(%State{} = state) do
     initial_state = %{aircraft: state, timeout_ref: nil}
