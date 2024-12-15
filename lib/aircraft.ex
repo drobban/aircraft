@@ -56,6 +56,6 @@ defmodule Aircraft do
       speed: 800
     }
 
-    GenServer.start_link(Aircraft.Worker, state)
+    GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: :testar})
   end
 end

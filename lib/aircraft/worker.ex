@@ -7,15 +7,14 @@ defmodule Aircraft.Worker do
   @tick 10_000
   @kmh_to_ms 3.6
 
-
-  def start_link(%Aircraft.State{} = state) do
+  def start_link(%{initial_state: %Aircraft.State{}, flight_control: _flight_controller} = state) do
     Logger.debug(inspect(__MODULE__))
     GenServer.start_link(__MODULE__, state, name: String.to_atom(state.name))
   end
 
   @impl true
-  def init(%State{} = state) do
-    initial_state = %{aircraft: state, timeout_ref: nil}
+  def init(%{initial_state: %State{} = aircraft, flight_control: controller} = _state) do
+    initial_state = %{aircraft: aircraft, timeout_ref: nil, flight_control: controller}
     {:ok, initial_state, {:continue, :setup}}
   end
 
@@ -40,6 +39,7 @@ defmodule Aircraft.Worker do
       )
 
     Logger.debug("Is this activated hot! #{bearing}")
+    ping_traffic_control(state.flight_control)
 
     {pos_lat, pos_lng} =
       Calculator.calculate_new_position(aircraft.pos_lat, aircraft.pos_long, bearing, m)
@@ -79,5 +79,10 @@ defmodule Aircraft.Worker do
     distance = Calculator.calculate_distance(lat1, lng1, lat2, lng2)
 
     distance < m
+  end
+
+  # Controller is a module that we assume implements a list_topics fn.
+  defp ping_traffic_control(controller) do
+    Logger.debug(inspect controller.list_topics())
   end
 end
