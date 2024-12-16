@@ -42,7 +42,7 @@ defmodule Aircraft do
 
   def test() do
     dest_lat = 51.12
-    dest_lng = 7.12 
+    dest_lng = 7.12
 
     {pos_lat, pos_lng} = Calculator.calculate_new_position(dest_lat, dest_lng, 180.0, 50_000)
 
@@ -60,6 +60,10 @@ defmodule Aircraft do
     # This is kind of a hacky way to solve it... perhaps find a more obvious and
     # established method to do it.
     # GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: FlightControl, pubsub: (fn topic, state -> PubSub.broadcast(FlightTracker.PubSub, topic, state) end)})
-    GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: :testar, pubsub: :not_implemented})
+    GenServer.start_link(Aircraft.Worker, %{
+      initial_state: state,
+      flight_control: :testar,
+      pubsub: :not_implemented
+    })
   end
 end

@@ -58,9 +58,9 @@ defmodule Aircraft.Worker do
          ) do
       {:ok, topics} ->
         for topic <- topics do
-        # This is hacky. but pubsub will give us a function that we just input topic and state to.
+          # This is hacky. but pubsub will give us a function that we just input topic and state to.
           state.pubsub.(topic, state.aircraft)
-          
+
           Logger.debug("Broadcast to #{topic}!")
         end
 
