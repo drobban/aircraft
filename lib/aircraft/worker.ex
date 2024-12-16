@@ -7,14 +7,25 @@ defmodule Aircraft.Worker do
   @tick 10_000
   @kmh_to_ms 3.6
 
-  def start_link(%{initial_state: %Aircraft.State{}, flight_control: _flight_controller} = state) do
+  def start_link(
+        %{initial_state: %Aircraft.State{}, flight_control: _flight_controller, pubsub: _pubsub} =
+          state
+      ) do
     Logger.debug(inspect(__MODULE__))
     GenServer.start_link(__MODULE__, state, name: String.to_atom(state.name))
   end
 
   @impl true
-  def init(%{initial_state: %State{} = aircraft, flight_control: controller} = _state) do
-    initial_state = %{aircraft: aircraft, timeout_ref: nil, flight_control: controller}
+  def init(
+        %{initial_state: %State{} = aircraft, flight_control: controller, pubsub: pubsub} = _state
+      ) do
+    initial_state = %{
+      aircraft: aircraft,
+      timeout_ref: nil,
+      flight_control: controller,
+      pubsub: pubsub
+    }
+
     {:ok, initial_state, {:continue, :setup}}
   end
 
@@ -38,8 +49,24 @@ defmodule Aircraft.Worker do
         aircraft.destination_long
       )
 
-    Logger.debug("Is this activated hot! #{bearing}")
-    ping_traffic_control(state.flight_control)
+    Logger.debug("Inform client stations")
+
+    case ping_traffic_control(
+           state.flight_control,
+           state.aircraft.pos_lat,
+           state.aircraft.pos_long
+         ) do
+      {:ok, topics} ->
+        for topic <- topics do
+        # This is hacky. but pubsub will give us a function that we just input topic and state to.
+          state.pubsub.(topic, state.aircraft)
+          
+          Logger.debug("Broadcast to #{topic}!")
+        end
+
+      nil ->
+        Logger.debug("No client stations in reach")
+    end
 
     {pos_lat, pos_lng} =
       Calculator.calculate_new_position(aircraft.pos_lat, aircraft.pos_long, bearing, m)
@@ -82,7 +109,13 @@ defmodule Aircraft.Worker do
   end
 
   # Controller is a module that we assume implements a list_topics fn.
-  defp ping_traffic_control(controller) do
-    Logger.debug(inspect controller.list_topics())
+  # We could perhaps go bananas with behaviour
+  defp ping_traffic_control(controller, lat, lng) do
+    if function_exported?(controller, :return_topics, 2) do
+      {:ok, controller.return_topics(lat, lng)}
+    else
+      Logger.debug("List topics not implemented in controller module #{inspect(controller)}")
+      nil
+    end
   end
 end
