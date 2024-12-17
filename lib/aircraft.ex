@@ -40,14 +40,21 @@ defmodule Aircraft do
     ]
   end
 
-  def test() do
-    dest_lat = 51.12
-    dest_lng = 7.12
+  def test(
+        control,
+        name \\ "MH417",
+        dest_lat \\ 51.12,
+        dest_lng \\ 7.12,
+        approach \\ 180.0,
+        distance \\ 50_000
+      ) do
+    # dest_lat = 51.12
+    # dest_lng = 7.12
 
-    {pos_lat, pos_lng} = Calculator.calculate_new_position(dest_lat, dest_lng, 180.0, 50_000)
+    {pos_lat, pos_lng} = Calculator.calculate_new_position(dest_lat, dest_lng, approach, distance)
 
     state = %Aircraft.State{
-      name: "MH417",
+      name: name,
       type: :civilian,
       pos_lat: pos_lat,
       pos_long: pos_lng,
@@ -59,11 +66,11 @@ defmodule Aircraft do
     # This is an example on how to start an aircraft on the server.
     # This is kind of a hacky way to solve it... perhaps find a more obvious and
     # established method to do it.
-    # GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: FlightControl, pubsub: (fn topic, state -> PubSub.broadcast(FlightTracker.PubSub, topic, state) end)})
-    GenServer.start_link(Aircraft.Worker, %{
-      initial_state: state,
-      flight_control: :testar,
-      pubsub: :not_implemented
-    })
+    GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: control})
+    # GenServer.start_link(Aircraft.Worker, %{
+    #   initial_state: state,
+    #   flight_control: :testar,
+    #   pubsub: :not_implemented
+    # })
   end
 end

@@ -8,7 +8,7 @@ defmodule Aircraft.Worker do
   @kmh_to_ms 3.6
 
   def start_link(
-        %{initial_state: %Aircraft.State{}, flight_control: _flight_controller, pubsub: _pubsub} =
+        %{initial_state: %Aircraft.State{}, flight_control: _flight_controller} =
           state
       ) do
     Logger.debug(inspect(__MODULE__))
@@ -16,14 +16,11 @@ defmodule Aircraft.Worker do
   end
 
   @impl true
-  def init(
-        %{initial_state: %State{} = aircraft, flight_control: controller, pubsub: pubsub} = _state
-      ) do
+  def init(%{initial_state: %State{} = aircraft, flight_control: controller} = _state) do
     initial_state = %{
       aircraft: aircraft,
       timeout_ref: nil,
-      flight_control: controller,
-      pubsub: pubsub
+      flight_control: controller
     }
 
     {:ok, initial_state, {:continue, :setup}}
@@ -58,9 +55,7 @@ defmodule Aircraft.Worker do
          ) do
       {:ok, topics} ->
         for topic <- topics do
-          # This is hacky. but pubsub will give us a function that we just input topic and state to.
-          state.pubsub.(topic, state.aircraft)
-
+          broadcast(state.flight_control, topic, state)
           Logger.debug("Broadcast to #{topic}!")
         end
 
@@ -115,6 +110,15 @@ defmodule Aircraft.Worker do
       {:ok, controller.return_topics(lat, lng)}
     else
       Logger.debug("List topics not implemented in controller module #{inspect(controller)}")
+      nil
+    end
+  end
+
+  defp broadcast(controller, topic, state) do
+    if function_exported?(controller, :broadcast, 2) do
+      {:ok, controller.broadcast(topic, state.aircraft)}
+    else
+      Logger.debug("Broadcast not available")
       nil
     end
   end
