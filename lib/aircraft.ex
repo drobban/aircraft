@@ -40,6 +40,49 @@ defmodule Aircraft do
     ]
   end
 
+  # aircrafts = for x <- 1..100, do: Aircraft.test(FlightControl, "MH#{x}", 51.12, 7.12, :rand.uniform(360), :rand.uniform(6_000_000))
+  def spawn_random(control, n_crafts) do
+    airports = [
+      {"Hartsfield–Jackson Atlanta International Airport (ATL)", 33.6407, -84.4277},
+      {"Los Angeles International Airport (LAX)", 33.9416, -118.4085},
+      {"Chicago O'Hare International Airport (ORD)", 41.9742, -87.9073},
+      {"Dallas/Fort Worth International Airport (DFW)", 32.8998, -97.0403},
+      {"Denver International Airport (DEN)", 39.8561, -104.6737},
+      {"John F. Kennedy International Airport (JFK)", 40.6413, -73.7781},
+      {"San Francisco International Airport (SFO)", 37.6213, -122.3790},
+      {"Seattle-Tacoma International Airport (SEA)", 47.4502, -122.3088},
+      {"Miami International Airport (MIA)", 25.7959, -80.2870},
+      {"Orlando International Airport (MCO)", 28.4312, -81.3081},
+      {"London Heathrow Airport (LHR)", 51.4700, -0.4543},
+      {"Paris Charles de Gaulle Airport (CDG)", 49.0097, 2.5479},
+      {"Amsterdam Schiphol Airport (AMS)", 52.3105, 4.7683},
+      {"Frankfurt Airport (FRA)", 50.0379, 8.5622},
+      {"Tokyo Haneda Airport (HND)", 35.5494, 139.7798},
+      {"Dubai International Airport (DXB)", 25.2532, 55.3657},
+      {"Singapore Changi Airport (SIN)", 1.3644, 103.9915},
+      {"Hong Kong International Airport (HKG)", 22.3080, 113.9185},
+      {"Sydney Kingsford Smith Airport (SYD)", -33.9399, 151.1753},
+      {"Toronto Pearson International Airport (YYZ)", 43.6777, -79.6248},
+      {"Vancouver International Airport (YVR)", 49.1951, -123.1777},
+      {"Mexico City International Airport (MEX)", 19.4361, -99.0719},
+      {"São Paulo/Guarulhos–Governador André Franco Montoro Airport (GRU)", -23.4356, -46.4731},
+      {"Cape Town International Airport (CPT)", -33.9710, 18.6021},
+      {"Istanbul Airport (IST)", 41.2753, 28.7519},
+      {"Beijing Capital International Airport (PEK)", 40.0799, 116.6031},
+      {"Seoul Incheon International Airport (ICN)", 37.4602, 126.4407},
+      {"Mumbai Chhatrapati Shivaji Maharaj International Airport (BOM)", 19.0896, 72.8656},
+      {"Kuala Lumpur International Airport (KUL)", 2.7456, 101.7099},
+      {"Bangkok Suvarnabhumi Airport (BKK)", 13.6894, 100.7501}
+    ]
+
+    aircrafts = for x <- 1..n_crafts do 
+      {_name, lat, lng} = Enum.at(airports, :rand.uniform(length(airports) -1))
+      Aircraft.test(control, "MH#{x}", lat, lng, :rand.uniform(360), :rand.uniform(300_000))
+    end
+
+    {:ok, aircrafts}
+  end
+
   def test(
         control,
         name \\ "MH417",

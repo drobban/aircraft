@@ -48,11 +48,8 @@ defmodule Aircraft.Worker do
 
     Logger.debug("Inform client stations")
 
-    case ping_traffic_control(
-           state.flight_control,
-           state.aircraft.pos_lat,
-           state.aircraft.pos_long
-         ) do
+    ping = ping_traffic_control( state.flight_control, state.aircraft.pos_lat, state.aircraft.pos_long)
+    case ping do
       {:ok, topics} ->
         for topic <- topics do
           broadcast(state.flight_control, topic, state)
@@ -76,13 +73,19 @@ defmodule Aircraft.Worker do
              aircraft.speed
            ) do
         true ->
-          {nil,
-           %State{
+          aircraft_state = %State{
              aircraft
              | pos_lat: aircraft.destination_lat,
                pos_long: aircraft.destination_long,
                status: :landed
-           }}
+          }
+          {:ok, topics} = ping
+          for topic <- topics do
+            broadcast(state.flight_control, topic, %{aircraft: aircraft_state})
+            Logger.debug("Broadcast to #{topic}!")
+          end
+          {nil, aircraft_state}
+           
 
         false ->
           timeout_ref = Process.send_after(self(), :tick, @tick)
