@@ -8,33 +8,36 @@ defmodule Aircraft do
     @type type :: :civilian | :military | :transport
     @type position :: float()
     @type speed_kmh :: integer()
+    @type degrees :: float()
 
     @type t :: %__MODULE__{
             name: name(),
             status: status(),
             type: type(),
             pos_lat: position(),
-            pos_long: position(),
+            pos_lng: position(),
             destination_lat: position(),
-            destination_long: position(),
-            speed: speed_kmh()
+            destination_lng: position(),
+            speed: speed_kmh(),
+            bearing: degrees()
           }
 
     @enforce_keys [
       :name,
       :type,
       :pos_lat,
-      :pos_long,
+      :pos_lng,
       :destination_lat,
-      :destination_long
+      :destination_lng
     ]
     defstruct [
       :name,
       :type,
       :pos_lat,
-      :pos_long,
+      :pos_lng,
       :destination_lat,
-      :destination_long,
+      :destination_lng,
+      bearing: 0.0,
       speed: 0,
       status: :takeoff
     ]
@@ -75,10 +78,28 @@ defmodule Aircraft do
       {"Bangkok Suvarnabhumi Airport (BKK)", 13.6894, 100.7501}
     ]
 
-    aircrafts = for x <- 1..n_crafts do 
-      {_name, lat, lng} = Enum.at(airports, :rand.uniform(length(airports) -1))
-      Aircraft.test(control, "MH#{x}", lat, lng, :rand.uniform(360), :rand.uniform(300_000))
-    end
+    aircrafts =
+      for x <- 1..n_crafts do
+        # destination 
+        {name, lat, lng} = Enum.at(airports, :rand.uniform(length(airports) - 1))
+        # departure
+        {_, dep_lat, dep_lng} =
+          Enum.at(
+            airports |> Enum.filter(fn {dep_name, _, _} -> dep_name != name end),
+            :rand.uniform(length(airports) - 2)
+          )
+
+        {dep_lat, dep_lng} =
+          Calculator.calculate_new_position(
+            dep_lat,
+            dep_lng,
+            :rand.uniform(360),
+            :rand.uniform(150_000)
+          )
+
+        Aircraft.round_trip(control, "MH#{x}", lat, lng, dep_lat, dep_lng)
+        # Aircraft.test(control, "MH#{x}", lat, lng, :rand.uniform(360), :rand.uniform(300_000))
+      end
 
     {:ok, aircrafts}
   end
@@ -100,9 +121,9 @@ defmodule Aircraft do
       name: name,
       type: :civilian,
       pos_lat: pos_lat,
-      pos_long: pos_lng,
+      pos_lng: pos_lng,
       destination_lat: dest_lat,
-      destination_long: dest_lng,
+      destination_lng: dest_lng,
       speed: 800
     }
 
@@ -115,5 +136,30 @@ defmodule Aircraft do
     #   flight_control: :testar,
     #   pubsub: :not_implemented
     # })
+  end
+
+  def round_trip(
+        control,
+        name \\ "MH417",
+        dest_lat \\ 51.12,
+        dest_lng \\ 7.12,
+        dep_lat \\ 22.3080,
+        dep_lng \\ 113.9185
+      ) do
+    # dest_lat = 51.12
+    # dest_lng = 7.12
+
+    state = %Aircraft.State{
+      name: name,
+      type: :civilian,
+      pos_lat: dep_lat,
+      pos_lng: dep_lng,
+      destination_lat: dest_lat,
+      destination_lng: dest_lng,
+      speed: 800,
+      bearing: Calculator.calculate_bearing(dep_lat, dep_lng, dest_lat, dest_lng)
+    }
+
+    GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: control})
   end
 end

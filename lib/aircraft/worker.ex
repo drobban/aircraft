@@ -41,14 +41,16 @@ defmodule Aircraft.Worker do
     bearing =
       Calculator.calculate_bearing(
         aircraft.pos_lat,
-        aircraft.pos_long,
+        aircraft.pos_lng,
         aircraft.destination_lat,
-        aircraft.destination_long
+        aircraft.destination_lng
       )
 
     Logger.debug("Inform client stations")
 
-    ping = ping_traffic_control( state.flight_control, state.aircraft.pos_lat, state.aircraft.pos_long)
+    ping =
+      ping_traffic_control(state.flight_control, state.aircraft.pos_lat, state.aircraft.pos_lng)
+
     case ping do
       {:ok, topics} ->
         for topic <- topics do
@@ -61,35 +63,37 @@ defmodule Aircraft.Worker do
     end
 
     {pos_lat, pos_lng} =
-      Calculator.calculate_new_position(aircraft.pos_lat, aircraft.pos_long, bearing, m)
+      Calculator.calculate_new_position(aircraft.pos_lat, aircraft.pos_lng, bearing, m)
 
     {timeout_ref, aircraft} =
       case arrived?(
              pos_lat,
              pos_lng,
              aircraft.destination_lat,
-             aircraft.destination_long,
+             aircraft.destination_lng,
              @tick,
              aircraft.speed
            ) do
         true ->
           aircraft_state = %State{
-             aircraft
-             | pos_lat: aircraft.destination_lat,
-               pos_long: aircraft.destination_long,
-               status: :landed
+            aircraft
+            | pos_lat: aircraft.destination_lat,
+              pos_lng: aircraft.destination_lng,
+              status: :landed
           }
+
           {:ok, topics} = ping
+
           for topic <- topics do
             broadcast(state.flight_control, topic, %{aircraft: aircraft_state})
             Logger.debug("Broadcast to #{topic}!")
           end
+
           {nil, aircraft_state}
-           
 
         false ->
           timeout_ref = Process.send_after(self(), :tick, @tick)
-          {timeout_ref, %State{aircraft | pos_lat: pos_lat, pos_long: pos_lng}}
+          {timeout_ref, %State{aircraft | pos_lat: pos_lat, pos_lng: pos_lng}}
       end
 
     Logger.debug("State #{inspect(aircraft)}")
