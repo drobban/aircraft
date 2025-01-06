@@ -94,10 +94,16 @@ defmodule Aircraft do
             dep_lat,
             dep_lng,
             :rand.uniform(360),
-            :rand.uniform(150_000)
+            :rand.uniform(4_000_000)
           )
 
-        Aircraft.round_trip(control, "MH#{x}", lat, lng, dep_lat, dep_lng)
+        # Time given in seconds
+        etd = :rand.uniform(3600 * 10) * 1_000
+
+        factor = :rand.uniform(100) / 100
+        speed = 800 * (1 + factor)
+
+        Aircraft.round_trip(control, "MH#{x}", lat, lng, dep_lat, dep_lng, speed, etd)
         # Aircraft.test(control, "MH#{x}", lat, lng, :rand.uniform(360), :rand.uniform(300_000))
       end
 
@@ -144,7 +150,9 @@ defmodule Aircraft do
         dest_lat \\ 51.12,
         dest_lng \\ 7.12,
         dep_lat \\ 22.3080,
-        dep_lng \\ 113.9185
+        dep_lng \\ 113.9185,
+        speed \\ 800,
+        etd \\ 10_000
       ) do
     # dest_lat = 51.12
     # dest_lng = 7.12
@@ -156,10 +164,19 @@ defmodule Aircraft do
       pos_lng: dep_lng,
       destination_lat: dest_lat,
       destination_lng: dest_lng,
-      speed: 800,
+      speed: speed,
       bearing: Calculator.calculate_bearing(dep_lat, dep_lng, dest_lat, dest_lng)
     }
 
-    GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: control})
+    Aircraft.Worker.start_link(%{
+      initial_state: state,
+      flight_control: control,
+      etd: etd
+    })
+  end
+
+  def get_state(name) do
+    server = String.to_atom(name)
+    GenServer.call(server, :get_state)
   end
 end

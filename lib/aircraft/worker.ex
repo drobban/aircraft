@@ -11,16 +11,16 @@ defmodule Aircraft.Worker do
         %{initial_state: %Aircraft.State{}, flight_control: _flight_controller} =
           state
       ) do
-    Logger.debug(inspect(__MODULE__))
-    GenServer.start_link(__MODULE__, state, name: String.to_atom(state.name))
+    GenServer.start_link(__MODULE__, state, name: String.to_atom(state.initial_state.name))
   end
 
   @impl true
-  def init(%{initial_state: %State{} = aircraft, flight_control: controller} = _state) do
+  def init(%{initial_state: %State{} = aircraft, flight_control: controller, etd: etd} = _state) do
     initial_state = %{
       aircraft: aircraft,
       timeout_ref: nil,
-      flight_control: controller
+      flight_control: controller,
+      etd: etd
     }
 
     {:ok, initial_state, {:continue, :setup}}
@@ -28,9 +28,16 @@ defmodule Aircraft.Worker do
 
   @impl true
   def handle_continue(:setup, %{aircraft: %Aircraft.State{} = aircraft} = state) do
-    timeout_ref = Process.send_after(self(), :tick, @tick)
+    etd = if state.etd < @tick, do: @tick, else: state.etd
+    timeout_ref = Process.send_after(self(), :tick, etd)
     aircraft = %Aircraft.State{aircraft | status: :inflight}
     {:noreply, state |> Map.put(:timeout_ref, timeout_ref) |> Map.put(:aircraft, aircraft)}
+  end
+
+  @impl true
+  def handle_call(:get_state, from, state) do
+    Logger.debug("Got call from #{inspect(from)}")
+    {:reply, state, state}
   end
 
   @impl true
@@ -46,8 +53,6 @@ defmodule Aircraft.Worker do
         aircraft.destination_lng
       )
 
-    Logger.debug("Inform client stations")
-
     ping =
       ping_traffic_control(state.flight_control, state.aircraft.pos_lat, state.aircraft.pos_lng)
 
@@ -55,7 +60,6 @@ defmodule Aircraft.Worker do
       {:ok, topics} ->
         for topic <- topics do
           broadcast(state.flight_control, topic, state)
-          Logger.debug("Broadcast to #{topic}!")
         end
 
       nil ->
@@ -96,7 +100,6 @@ defmodule Aircraft.Worker do
           {timeout_ref, %State{aircraft | pos_lat: pos_lat, pos_lng: pos_lng}}
       end
 
-    Logger.debug("State #{inspect(aircraft)}")
     {:noreply, state |> Map.put(:timeout_ref, timeout_ref) |> Map.put(:aircraft, aircraft)}
   end
 
