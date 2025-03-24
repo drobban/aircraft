@@ -116,7 +116,8 @@ defmodule Aircraft do
         dest_lat \\ 51.12,
         dest_lng \\ 7.12,
         approach \\ 180.0,
-        distance \\ 50_000
+        distance \\ 50_000,
+        etd \\ 10_000
       ) do
     # dest_lat = 51.12
     # dest_lng = 7.12
@@ -130,18 +131,13 @@ defmodule Aircraft do
       pos_lng: pos_lng,
       destination_lat: dest_lat,
       destination_lng: dest_lng,
-      speed: 800
+      speed: 800,
+      bearing: Calculator.calculate_bearing(pos_lat, pos_lng, dest_lat, dest_lng)
     }
 
     # This is an example on how to start an aircraft on the server.
-    # This is kind of a hacky way to solve it... perhaps find a more obvious and
-    # established method to do it.
-    GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: control})
-    # GenServer.start_link(Aircraft.Worker, %{
-    #   initial_state: state,
-    #   flight_control: :testar,
-    #   pubsub: :not_implemented
-    # })
+    GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: control, etd: etd})
+      
   end
 
   def round_trip(
@@ -173,6 +169,44 @@ defmodule Aircraft do
       flight_control: control,
       etd: etd
     })
+  end
+
+  def supervised_round_trip(
+        control,
+        supervisor,
+        name \\ "MH417",
+        dest_lat \\ 51.12,
+        dest_lng \\ 7.12,
+        dep_lat \\ 22.3080,
+        dep_lng \\ 113.9185,
+        speed \\ 800,
+        etd \\ 10_000
+      ) do
+    # dest_lat = 51.12
+    # dest_lng = 7.12
+
+    state = %Aircraft.State{
+      name: name,
+      type: :civilian,
+      pos_lat: dep_lat,
+      pos_lng: dep_lng,
+      destination_lat: dest_lat,
+      destination_lng: dest_lng,
+      speed: speed,
+      bearing: Calculator.calculate_bearing(dep_lat, dep_lng, dest_lat, dest_lng)
+    }
+
+    # Aircraft.Worker.start_link(%{
+    #   initial_state: state,
+    #   flight_control: control,
+    #   etd: etd
+    # })
+
+    case :global.whereis_name(supervisor) do
+      :undefined -> {:error, :supervisor_not_found}
+      sup_pid -> 
+        DynamicSupervisor.start_child(sup_pid, {Aircraft.Worker, %{initial_state: state, flight_control: control, etd: etd}})
+    end
   end
 
   def get_state(name) do
