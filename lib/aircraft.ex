@@ -44,8 +44,8 @@ defmodule Aircraft do
   end
 
   # aircrafts = for x <- 1..100, do: Aircraft.test(FlightControl, "MH#{x}", 51.12, 7.12, :rand.uniform(360), :rand.uniform(6_000_000))
-  def spawn_random(control, n_crafts) do
-    airports = [
+  def spawn_random(control, supervisor, n_crafts) do
+    _airports = [
       {"Hartsfield–Jackson Atlanta International Airport (ATL)", 33.6407, -84.4277},
       {"Los Angeles International Airport (LAX)", 33.9416, -118.4085},
       {"Chicago O'Hare International Airport (ORD)", 41.9742, -87.9073},
@@ -78,6 +78,29 @@ defmodule Aircraft do
       {"Bangkok Suvarnabhumi Airport (BKK)", 13.6894, 100.7501}
     ]
 
+    airports = [
+      {"London Heathrow Airport (LHR)", 51.4700, -0.4543},
+      {"Paris Charles de Gaulle Airport (CDG)", 49.0097, 2.5479},
+      {"Frankfurt Airport (FRA)", 50.0379, 8.5622},
+      {"Amsterdam Airport Schiphol (AMS)", 52.3105, 4.7683},
+      {"Madrid-Barajas Adolfo Suárez Airport (MAD)", 40.4983, -3.5676},
+      {"Rome Fiumicino Airport (FCO)", 41.8003, 12.2389},
+      {"Munich Airport (MUC)", 48.3537, 11.7861},
+      {"Barcelona-El Prat Airport (BCN)", 41.2974, 2.0833},
+      {"London Gatwick Airport (LGW)", 51.1537, -0.1821},
+      {"Copenhagen Airport (CPH)", 55.6180, 12.6508},
+      {"Vienna International Airport (VIE)", 48.1103, 16.5697},
+      {"Dublin Airport (DUB)", 53.4213, -6.2701},
+      {"Zurich Airport (ZRH)", 47.4647, 8.5492},
+      {"Oslo Gardermoen Airport (OSL)", 60.1939, 11.1004},
+      {"Stockholm Arlanda Airport (ARN)", 59.6498, 17.9238},
+      {"Helsinki-Vantaa Airport (HEL)", 60.3172, 24.9633},
+      {"Brussels Airport (BRU)", 50.9010, 4.4844},
+      {"Lisbon Humberto Delgado Airport (LIS)", 38.7742, -9.1342},
+      {"Moscow Sheremetyevo Airport (SVO)", 55.9728, 37.4146},
+      {"Istanbul Airport (IST)", 41.2753, 28.7519}
+    ]
+
     aircrafts =
       for x <- 1..n_crafts do
         # destination 
@@ -94,16 +117,16 @@ defmodule Aircraft do
             dep_lat,
             dep_lng,
             :rand.uniform(360),
-            :rand.uniform(4_000_000)
+            :rand.uniform(150_000)
           )
 
         # Time given in seconds
-        etd = :rand.uniform(3600 * 10) * 1_000
+        etd = :rand.uniform(100) * 1_000
 
         factor = :rand.uniform(100) / 100
         speed = 800 * (1 + factor)
 
-        Aircraft.round_trip(control, "MH#{x}", lat, lng, dep_lat, dep_lng, speed, etd)
+        Aircraft.supervised_round_trip(control, supervisor, "MH#{x}", lat, lng, dep_lat, dep_lng, speed, etd)
         # Aircraft.test(control, "MH#{x}", lat, lng, :rand.uniform(360), :rand.uniform(300_000))
       end
 
@@ -136,8 +159,11 @@ defmodule Aircraft do
     }
 
     # This is an example on how to start an aircraft on the server.
-    GenServer.start_link(Aircraft.Worker, %{initial_state: state, flight_control: control, etd: etd})
-      
+    GenServer.start_link(Aircraft.Worker, %{
+      initial_state: state,
+      flight_control: control,
+      etd: etd
+    })
   end
 
   def round_trip(
@@ -203,9 +229,14 @@ defmodule Aircraft do
     # })
 
     case :global.whereis_name(supervisor) do
-      :undefined -> {:error, :supervisor_not_found}
-      sup_pid -> 
-        DynamicSupervisor.start_child(sup_pid, {Aircraft.Worker, %{initial_state: state, flight_control: control, etd: etd}})
+      :undefined ->
+        {:error, :supervisor_not_found}
+
+      sup_pid ->
+        DynamicSupervisor.start_child(
+          sup_pid,
+          {Aircraft.Worker, %{initial_state: state, flight_control: control, etd: etd}}
+        )
     end
   end
 
