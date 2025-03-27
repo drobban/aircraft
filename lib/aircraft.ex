@@ -117,7 +117,7 @@ defmodule Aircraft do
             dep_lat,
             dep_lng,
             :rand.uniform(360),
-            :rand.uniform(150_000)
+            :rand.uniform(1_000_000)
           )
 
         # Time given in seconds
