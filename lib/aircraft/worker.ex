@@ -43,6 +43,20 @@ defmodule Aircraft.Worker do
   end
 
   @impl true
+  def handle_call(:crash, from, %{aircraft: %Aircraft.State{} = aircraft} = state) do
+    Logger.debug("Got hit by SamSite #{inspect(from)}")
+
+    Process.send_after(self(), :counter_meassure, 10_000)
+
+    {:reply, state, %{state | aircraft: %Aircraft.State{aircraft | status: :crash}}}
+  end
+
+  # @impl true
+  # def handle_info(:counter_meassure, %{aircraft: %Aircraft.State{} = aircraft} = state) do
+  #   {:noreply, %{state | aircraft: %Aircraft.State{aircraft | status: :inflight}}}
+  # end
+
+  @impl true
   def handle_info(:tick, %{aircraft: %Aircraft.State{} = aircraft} = state) do
     kmh = aircraft.speed
     m = @tick / 1000 * (kmh / @kmh_to_ms)

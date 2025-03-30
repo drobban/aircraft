@@ -4,7 +4,7 @@ defmodule Aircraft do
 
   defmodule State do
     @type name :: String.t()
-    @type status :: :takeoff | :inflight | :landed
+    @type status :: :takeoff | :inflight | :landed | :crash
     @type type :: :civilian | :military | :transport
     @type position :: float()
     @type speed_kmh :: integer()
@@ -112,12 +112,61 @@ defmodule Aircraft do
             :rand.uniform(length(airports) - 2)
           )
 
-        {dep_lat, dep_lng} =
-          Calculator.calculate_new_position(
-            dep_lat,
-            dep_lng,
-            :rand.uniform(360),
-            :rand.uniform(1_000_000)
+        # {dep_lat, dep_lng} =
+        #   Calculator.calculate_new_position(
+        #     dep_lat,
+        #     dep_lng,
+        #     :rand.uniform(360),
+        #     :rand.uniform(1_000_000)
+        #   )
+        #
+        # Time given in seconds
+        etd = :rand.uniform(100) * 1_000
+
+        factor = :rand.uniform(100) / 100
+        speed = 800 * (1 + factor)
+
+        Aircraft.supervised_round_trip(control, supervisor, "SU#{x}", lat, lng, dep_lat, dep_lng, speed, etd)
+        # Aircraft.test(control, "MH#{x}", lat, lng, :rand.uniform(360), :rand.uniform(300_000))
+      end
+
+    {:ok, aircrafts}
+  end
+
+
+  def spawn_kalinin_random(control, supervisor, n_crafts) do
+    airports = [
+      {"London Heathrow Airport (LHR)", 51.4700, -0.4543},
+      {"Paris Charles de Gaulle Airport (CDG)", 49.0097, 2.5479},
+      {"Frankfurt Airport (FRA)", 50.0379, 8.5622},
+      {"Amsterdam Airport Schiphol (AMS)", 52.3105, 4.7683},
+      {"Madrid-Barajas Adolfo Suárez Airport (MAD)", 40.4983, -3.5676},
+      {"Rome Fiumicino Airport (FCO)", 41.8003, 12.2389},
+      {"Munich Airport (MUC)", 48.3537, 11.7861},
+      {"Barcelona-El Prat Airport (BCN)", 41.2974, 2.0833},
+      {"London Gatwick Airport (LGW)", 51.1537, -0.1821},
+      {"Copenhagen Airport (CPH)", 55.6180, 12.6508},
+      {"Vienna International Airport (VIE)", 48.1103, 16.5697},
+      {"Dublin Airport (DUB)", 53.4213, -6.2701},
+      {"Zurich Airport (ZRH)", 47.4647, 8.5492},
+      {"Oslo Gardermoen Airport (OSL)", 60.1939, 11.1004},
+      {"Stockholm Arlanda Airport (ARN)", 59.6498, 17.9238},
+      {"Helsinki-Vantaa Airport (HEL)", 60.3172, 24.9633},
+      {"Brussels Airport (BRU)", 50.9010, 4.4844},
+      {"Lisbon Humberto Delgado Airport (LIS)", 38.7742, -9.1342},
+      {"Moscow Sheremetyevo Airport (SVO)", 55.9728, 37.4146},
+      {"Istanbul Airport (IST)", 41.2753, 28.7519}
+    ]
+
+    aircrafts =
+      for x <- 1..n_crafts do
+        # destination 
+        {name, lat, lng} = Enum.at(airports, :rand.uniform(length(airports) - 1))
+        # departure
+        {_, _dep_lat, _dep_lng} =
+          Enum.at(
+            airports |> Enum.filter(fn {dep_name, _, _} -> dep_name != name end),
+            :rand.uniform(length(airports) - 2)
           )
 
         # Time given in seconds
@@ -126,12 +175,14 @@ defmodule Aircraft do
         factor = :rand.uniform(100) / 100
         speed = 800 * (1 + factor)
 
-        Aircraft.supervised_round_trip(control, supervisor, "MH#{x}", lat, lng, dep_lat, dep_lng, speed, etd)
-        # Aircraft.test(control, "MH#{x}", lat, lng, :rand.uniform(360), :rand.uniform(300_000))
+        Aircraft.supervised_round_trip(control, supervisor, "WZ#{x}", lat, lng, 54.318953467, 21.2486456, speed, etd)
       end
 
     {:ok, aircrafts}
   end
+
+
+
 
   def test(
         control,
