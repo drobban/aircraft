@@ -23,6 +23,8 @@ defmodule Aircraft.Worker do
       etd: etd
     }
 
+    :global.register_name(String.to_atom(aircraft.name), self())
+
     {:ok, initial_state, {:continue, :setup}}
   end
 
